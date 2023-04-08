@@ -1,9 +1,76 @@
 const UserService = require('../services/UserService')
 const JwtService = require('../services/JwtService')
+const Otp = require('../models/OtpModel')
+const User = require('../models/UserModel')
+const { sendMail } = require('../utils/mailer')
+
+const sendOtp = async (req, res) => {
+  try {
+    const { email } = req.body
+    const OTP = Math.floor(1000 + Math.random() * 9000)
+    if (!email) {
+      return res.status(400).json({
+        status: 'ERR',
+        message: 'The input is required'
+      })
+    }
+    const existEmail = await Otp.findOne({ email: email })
+    const subject = 'Sending Eamil For Otp Validation'
+    const text = 'OTP:-'
+    if (existEmail) {
+      const response = await Otp.findByIdAndUpdate(
+        { _id: existEmail._id },
+        {
+          otp: OTP
+        },
+        { new: true }
+      )
+
+      sendMail(OTP, email, subject, text)
+      return res.status(200).json(response)
+    } else if (!existEmail) {
+      const newOtp = {
+        email,
+        otp: OTP
+      }
+      const response = await new Otp(newOtp).save()
+      setTimeout(() => {
+        Otp.deleteMany({ expiresAt: { $lt: new Date() } }).exec()
+      }, 60000)
+      sendMail(OTP, email, subject, text)
+      return res.status(200).json(response)
+    }
+  } catch (error) {
+    return res.status(404).json({
+      message: error
+    })
+  }
+}
+
+const userResetPassword = async (req, res) => {
+  const { email, otp, password } = req.body
+  const checkUser = await User.findOne({
+    email: email
+  })
+  if (checkUser === null) {
+    return res.status(400).json({ message: 'Email chưa được đăng kí!' })
+  }
+  const checkOtp = await Otp.findOne({
+    email: email,
+    otp: otp
+  })
+  if (checkOtp === null) {
+    return res.status(400).json({ message: 'OTP không chính xác hoặc đã hết hạn!' })
+  }
+  if (checkUser !== null && checkOtp !== null) {
+    const response = await UserService.userResetPassword(email, password)
+    return res.status(200).json(response)
+  }
+}
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, phone } = req.body
+    const { email, password, confirmPassword } = req.body
     const reg = /^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/
     const isCheckEmail = reg.test(email)
     if (!email || !password || !confirmPassword) {
@@ -36,6 +103,12 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body
     const reg = /^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/
     const isCheckEmail = reg.test(email)
+    if (!password || password.length === 0) {
+      return res.status(200).json({
+        status: 'ERR',
+        message: 'Chua nha, mat khau'
+      })
+    }
     if (!email || !password) {
       return res.status(200).json({
         status: 'ERR',
@@ -48,14 +121,14 @@ const loginUser = async (req, res) => {
       })
     }
     const response = await UserService.loginUser(req.body)
-    const { refresh_token, ...newReponse } = response
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: false,
+
+    res.cookie('refresh_token', response.refresh_token, {
+      maxAge: 60 * 60 * 24,
+      secure: true,
       sameSite: 'strict',
-      path: '/'
+      path: 'http://localhost:5000/api'
     })
-    return res.status(200).json(newReponse)
+    return res.status(200).json(response)
   } catch (e) {
     return res.status(404).json({
       message: 'Something wrong'
@@ -100,24 +173,6 @@ const deleteUser = async (req, res) => {
   }
 }
 
-// const deleteMany = async (req, res) => {
-//   try {
-//     const ids = req.body.ids
-//     if (!ids) {
-//       return res.status(200).json({
-//         status: 'ERR',
-//         message: 'The ids is required'
-//       })
-//     }
-//     const response = await UserService.deleteManyUser(ids)
-//     return res.status(200).json(response)
-//   } catch (e) {
-//     return res.status(404).json({
-//       message: e
-//     })
-//   }
-// }
-
 const getAllUser = async (req, res) => {
   try {
     const response = await UserService.getAllUser()
@@ -149,6 +204,7 @@ const getDetailsUser = async (req, res) => {
 
 const refreshToken = async (req, res) => {
   try {
+    // const token = req.body.refresh_token
     const token = req.cookies.refresh_token
     if (!token) {
       return res.status(200).json({
@@ -157,7 +213,6 @@ const refreshToken = async (req, res) => {
       })
     }
     const response = await JwtService.refreshTokenJwtService(token)
-
     return res.status(200).json(response)
   } catch (e) {
     return res.status(404).json({
@@ -168,7 +223,7 @@ const refreshToken = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
-    // res.clearCookie('refresh_token')
+    res.clearCookie('refresh_token')
     return res.status(200).json({
       status: 'OK',
       message: 'Logout successfully'
@@ -187,6 +242,7 @@ module.exports = {
   getAllUser,
   getDetailsUser,
   refreshToken,
-  logoutUser
-  //   deleteMany
+  logoutUser,
+  sendOtp,
+  userResetPassword
 }

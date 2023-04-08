@@ -33,7 +33,6 @@ const authUserMiddleWare = (req, res, next) => {
         status: 'ERROR'
       })
     }
-    // const { payload } = user
     if (user?.role === 'admin' || user?.id === userId) {
       next()
     } else {

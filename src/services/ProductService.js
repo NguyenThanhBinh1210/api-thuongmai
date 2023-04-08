@@ -3,34 +3,27 @@ const { SORT_BY, ORDER } = require('../constants/product')
 
 const createProduct = (newProduct) => {
   return new Promise(async (resolve, reject) => {
-    const { name, image, type, countInStock, price, rating, description, discount, selled, category } = newProduct
+    const { name, image, selled, rating, countInStock, price, description, discount, category } = newProduct
+    const price_after_discount = Math.ceil((price - (price * discount) / 100) / 1000) * 1000
     try {
-      const checkProduct = await Product.findOne({
-        name: name
-      })
-      if (checkProduct !== null) {
-        resolve({
-          status: 'ERR',
-          message: 'The name of product is already'
-        })
-      }
-      const newProduct = await Product.create({
+      const product = {
         name,
         image,
-        type,
+        selled,
+        rating,
         countInStock,
         price,
-        rating,
+        price_after_discount,
         description,
         discount,
-        selled,
         category
-      })
-      if (newProduct) {
+      }
+      const ProductAdd = await new Product(product).save()
+      if (ProductAdd) {
         resolve({
           status: 'OK',
           message: 'SUCCESS',
-          data: newProduct
+          data: ProductAdd
         })
       }
     } catch (e) {
@@ -48,11 +41,13 @@ const updateProduct = (id, data) => {
       if (checkProduct === null) {
         resolve({
           status: 'ERR',
-          message: 'The product is not defined'
+          message: 'Sản phẩm không được xác định!'
         })
       }
-
-      const updatedProduct = await Product.findByIdAndUpdate(id, data, { new: true })
+      const price_after_discount =
+        Math.ceil((checkProduct.price - (checkProduct.price * checkProduct.discount) / 100) / 1000) * 1000
+      const newData = { ...data, price_after_discount: price_after_discount }
+      const updatedProduct = await Product.findByIdAndUpdate(id, newData, { new: true })
       resolve({
         status: 'OK',
         message: 'SUCCESS',
@@ -62,6 +57,23 @@ const updateProduct = (id, data) => {
       reject(e)
     }
   })
+}
+const changeCountInStock = (id, buy_count) => {
+  try {
+    const checkProduct = Product.findOne({
+      _id: id
+    })
+    Product.findByIdAndUpdate(
+      id,
+      {
+        countInStock: checkProduct.countInStock - buy_count,
+        selled: checkProduct.selled + buy_count
+      },
+      { new: true }
+    )
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 const deleteProduct = (id) => {
@@ -108,7 +120,6 @@ const getDetailsProduct = (id) => {
       const product = await Product.findOne({
         _id: id
       })
-      console.log(product)
       if (product === null) {
         resolve({
           status: 'ERR',
@@ -138,12 +149,14 @@ const getAllProduct = (limit, page, category, sort_by, order, rating_filter, nam
         condition.rating = { $gte: rating_filter }
       }
       if (price_max) {
-        condition.price = {
+        condition.price_after_discount = {
           $lte: price_max
         }
       }
       if (price_min) {
-        condition.price = condition.price ? { ...condition.price, $gte: price_min } : { $gte: price_min }
+        condition.price_after_discount = condition.price_after_discount
+          ? { ...condition.price_after_discount, $gte: price_min }
+          : { $gte: price_min }
       }
       if (!ORDER.includes(order)) {
         order = ORDER[0]
@@ -190,5 +203,6 @@ module.exports = {
   getDetailsProduct,
   deleteProduct,
   getAllProduct,
-  deleteManyProduct
+  deleteManyProduct,
+  changeCountInStock
 }

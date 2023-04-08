@@ -1,9 +1,10 @@
 const User = require('../models/UserModel')
 const bcrypt = require('bcrypt')
 const { genneralAccessToken, genneralRefreshToken } = require('./JwtService')
+const Otp = require('../models/OtpModel')
 const createUser = (newUser) => {
   return new Promise(async (resolve, reject) => {
-    const { name, email, password, phone } = newUser
+    const { name, email, password, phone, otp } = newUser
     try {
       const checkUser = await User.findOne({
         email: email
@@ -11,23 +12,32 @@ const createUser = (newUser) => {
       if (checkUser !== null) {
         resolve({
           status: 'ERR',
-          message: 'The email is already'
+          message: 'Email đã tồn tại!'
         })
       }
-      const hash = bcrypt.hashSync(password, 10)
-      const createdUser = await User.create({
-        name,
-        email,
-        password: hash,
-        phone
+
+      const checkOtp = await Otp.findOne({
+        otp: otp,
+        email: email
       })
-      if (createdUser) {
-        resolve({
-          status: 'OK',
-          message: 'SUCCESS',
-          data: createdUser
+      // const compareOtp = bcrypt.compareSync(otp, checkOtp.otp)
+      if (checkOtp === null) {
+        reject({ message: 'OTP Không chính xác hoặc đã quá hạn!' })
+      } else {
+        const hash = bcrypt.hashSync(password, 10)
+        const createdUser = await User.create({
+          name,
+          email,
+          password: hash,
+          phone
         })
-        aclInstance.addUserRoles(createdUser._id, createdUser.role)
+        if (createdUser) {
+          resolve({
+            status: 'OK',
+            message: 'SUCCESS',
+            data: createdUser
+          })
+        }
       }
     } catch (e) {
       reject(e)
@@ -45,26 +55,23 @@ const loginUser = (userLogin) => {
       if (checkUser === null) {
         resolve({
           status: 'ERR',
-          message: 'The user is not defined'
+          message: 'Người dùng không được xác định!'
         })
       }
       const comparePassword = bcrypt.compareSync(password, checkUser.password)
-
       if (!comparePassword) {
         resolve({
           status: 'ERR',
-          message: 'The password or user is incorrect'
+          message: 'Mật khẩu hoặc người dùng không chính xác!'
         })
       }
       const access_token = await genneralAccessToken({
         id: checkUser._id,
-        isAdmin: checkUser.isAdmin,
         role: checkUser.role
       })
 
       const refresh_token = await genneralRefreshToken({
         id: checkUser._id,
-        isAdmin: checkUser.isAdmin,
         role: checkUser.role
       })
 
@@ -82,7 +89,38 @@ const loginUser = (userLogin) => {
     }
   })
 }
+const userResetPassword = (email, password) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const checkUser = await User.findOne({
+        email: email
+      })
+      if (checkUser === null) {
+        resolve({
+          status: 'ERR',
+          message: 'Người dùng không được xác định!'
+        })
+      }
 
+      const hash = bcrypt.hashSync(password, 10)
+
+      const updatedUser = await User.findOneAndUpdate(
+        { email: email },
+        {
+          password: hash
+        },
+        { new: true }
+      )
+      resolve({
+        status: 'OK',
+        message: 'SUCCESS',
+        data: updatedUser
+      })
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
 const updateUser = (id, data) => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -92,10 +130,26 @@ const updateUser = (id, data) => {
       if (checkUser === null) {
         resolve({
           status: 'ERR',
-          message: 'The user is not defined'
+          message: 'Người dùng không được xác định!'
         })
       }
-
+      const { password, newPassword } = data
+      if (password && newPassword) {
+        const comparePassword = bcrypt.compareSync(password, checkUser.password)
+        if (!comparePassword) {
+          resolve({
+            status: 'ERR',
+            message: 'Mật khẩu cũ không chính xác!'
+          })
+        }
+        const hash = bcrypt.hashSync(newPassword, 10)
+        const updatedUser = await User.findByIdAndUpdate(id, { password: hash }, { new: true })
+        resolve({
+          status: 'OK',
+          message: 'SUCCESS',
+          data: updatedUser
+        })
+      }
       const updatedUser = await User.findByIdAndUpdate(id, data, { new: true })
       resolve({
         status: 'OK',
@@ -117,14 +171,14 @@ const deleteUser = (id) => {
       if (checkUser === null) {
         resolve({
           status: 'ERR',
-          message: 'The user is not defined'
+          message: 'Người dùng không được xác định!'
         })
       }
 
       await User.findByIdAndDelete(id)
       resolve({
         status: 'OK',
-        message: 'Delete user success'
+        message: 'Xoá tài khoản thành công!'
       })
     } catch (e) {
       reject(e)
@@ -155,7 +209,7 @@ const getDetailsUser = (id) => {
       if (user === null) {
         resolve({
           status: 'ERR',
-          message: 'The user is not defined'
+          message: 'Người dùng không được xác định!'
         })
       }
       resolve({
@@ -174,5 +228,6 @@ module.exports = {
   updateUser,
   deleteUser,
   getAllUser,
-  getDetailsUser
+  getDetailsUser,
+  userResetPassword
 }

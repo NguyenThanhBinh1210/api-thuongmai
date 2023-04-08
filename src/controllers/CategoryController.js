@@ -5,7 +5,7 @@ const addCategory = async (req, res) => {
   const name = req.body.name
   const categoryAdd = await new Category({ name }).save()
   const response = {
-    message: 'Tạo Category thành công',
+    message: 'Tạo danh mục thành công!',
     data: categoryAdd.toObject({
       transform: (doc, ret, option) => {
         delete ret.__v
@@ -21,7 +21,7 @@ const getCategories = async (req, res) => {
   let condition = exclude ? { _id: { $ne: exclude } } : {}
   const categories = await Category.find(condition).select({ __v: 0 }).lean()
   const response = {
-    message: 'Lấy categories thành công',
+    message: 'Lấy danh sách danh mục thành công!',
     data: categories
   }
   return res.status(STATUS.OK).json(response)
@@ -36,7 +36,7 @@ const getCategory = async (req, res) => {
     }
     return res.status(STATUS.OK).json(response)
   } else {
-    console.log('Không tìm thấy Category')
+    return res.status(404).json({ message: 'Không tìm thấy Category' })
   }
 }
 
@@ -50,7 +50,7 @@ const updateCategory = async (req, res) => {
     }
     return res.status(STATUS.OK).json(response)
   } else {
-    console.log('Không tìm thấy Category')
+    return res.status(404).json({ message: 'Không tìm thấy Category' })
   }
 }
 
@@ -59,7 +59,7 @@ const deleteCategory = async (req, res) => {
   if (categoryDB) {
     return res.status(STATUS.OK).json({ message: 'Xóa thành công' })
   } else {
-    console.log('Không tìm thấy Category')
+    return res.status(404).json({ message: 'Không tìm thấy Category' })
   }
 }
 

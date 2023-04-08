@@ -4,9 +4,9 @@ const ProductService = require('../services/ProductService')
 
 const createProduct = async (req, res) => {
   try {
-    const { name, image, countInStock, price, rating } = req.body
+    const { name, countInStock, price } = req.body
 
-    if (!name || !image || !countInStock || !price || !rating) {
+    if (!name || !countInStock || !price) {
       return res.status(200).json({
         status: 'ERR',
         message: 'The input is required'
@@ -28,7 +28,7 @@ const updateProduct = async (req, res) => {
     if (!productId) {
       return res.status(200).json({
         status: 'ERR',
-        message: 'The productId is required'
+        message: 'Không tìm thấy sản phẩm!'
       })
     }
     const response = await ProductService.updateProduct(productId, data)
@@ -55,6 +55,23 @@ const getDetailsProduct = async (req, res) => {
     return res.status(404).json({
       message: e
     })
+  }
+}
+
+const getProduct = async (req, res) => {
+  let condition = { _id: req.params.id }
+  const productDB = await Product.findOneAndUpdate(condition, { $inc: { view: 1 } }, { new: true })
+    .populate('category')
+    .select({ __v: 0 })
+    .lean()
+  if (productDB) {
+    const response = {
+      message: 'Lấy sản phẩm thành công',
+      data: productDB
+    }
+    return res.status(200).json(response)
+  } else {
+    return res.status(200).json({ message: 'Không tìm thấy sản phẩm' })
   }
 }
 
@@ -170,6 +187,37 @@ const getProducts = async (req, res) => {
   return res.status(200).json(response)
 }
 
+const evaluateProduct = async (req, res) => {
+  const { product_id, rating } = req.body
+  // console.log(product_id, rating)
+  const productDb = await Product.findOne({
+    _id: product_id
+  }).lean()
+  if (productDb) {
+    if (rating > 5 || rating < 1) {
+      return res.status(404).json({ message: 'Đánh giá không hợp lệ!' })
+    }
+
+    const dataDb = await Product.findByIdAndUpdate(
+      product_id,
+      {
+        rating: (productDb.rating === 0 ? rating : (productDb.rating + rating) / 2).toFixed(0),
+        rating_count: productDb.rating_count + 1
+      },
+      {
+        new: true
+      }
+    ).lean()
+    const response = {
+      message: 'Đánh giá sản phẩm thành công!',
+      data: dataDb
+    }
+    return res.status(200).json(response)
+  } else {
+    return res.status(404).json({ message: 'Không tìm thấy sản phẩm!' })
+  }
+}
+
 module.exports = {
   createProduct,
   updateProduct,
@@ -177,5 +225,7 @@ module.exports = {
   deleteProduct,
   getAllProduct,
   deleteMany,
-  getProducts
+  getProducts,
+  getProduct,
+  evaluateProduct
 }
