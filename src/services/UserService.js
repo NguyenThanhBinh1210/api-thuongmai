@@ -89,6 +89,7 @@ const loginUser = (userLogin) => {
     }
   })
 }
+
 const userResetPassword = (email, password) => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -121,6 +122,7 @@ const userResetPassword = (email, password) => {
     }
   })
 }
+
 const updateUser = (id, data) => {
   return new Promise(async (resolve, reject) => {
     try {

@@ -3,6 +3,8 @@ const JwtService = require('../services/JwtService')
 const Otp = require('../models/OtpModel')
 const User = require('../models/UserModel')
 const { sendMail } = require('../utils/mailer')
+const bcrypt = require('bcrypt')
+const { STATUS } = require('../constants/status')
 
 const sendOtp = async (req, res) => {
   try {
@@ -47,6 +49,11 @@ const sendOtp = async (req, res) => {
   }
 }
 
+const deleteOtp = async (req, res) => {
+  Otp.deleteMany({ email: req.params.id })
+  return res.status(200).json({ message: 'Đã xoá OTP' })
+}
+
 const userResetPassword = async (req, res) => {
   const { email, otp, password } = req.body
   const checkUser = await User.findOne({
@@ -65,6 +72,37 @@ const userResetPassword = async (req, res) => {
   if (checkUser !== null && checkOtp !== null) {
     const response = await UserService.userResetPassword(email, password)
     return res.status(200).json(response)
+  }
+}
+
+const changePassword = async (req, res) => {
+  const { email, password, new_password } = req.body
+  if (password === new_password) {
+    return res.status(404).json({ message: 'Mật khẩu mới không được trùng với mật khẩu cũ!' })
+  }
+  const checkUser = await User.findOne({
+    email: email
+  })
+  if (checkUser === null) {
+    return res.status(STATUS.BAD_REQUEST).json({ message: 'Người dùng không đúng!' })
+  }
+  const comparePassword = bcrypt.compareSync(password, checkUser.password)
+  if (!comparePassword) {
+    return res.status(STATUS.BAD_REQUEST).json({ message: 'Xác nhận mật khẩu chưa chính xác!' })
+  }
+  if (checkUser !== null && comparePassword) {
+    const hash = bcrypt.hashSync(new_password, 10)
+    const updatedUser = await User.findOneAndUpdate(
+      { email: email },
+      {
+        password: hash
+      },
+      { new: true }
+    )
+    return res.status(STATUS.OK).json({
+      message: 'Đổi mật khẩu thành công!',
+      data: updatedUser
+    })
   }
 }
 
@@ -244,5 +282,7 @@ module.exports = {
   refreshToken,
   logoutUser,
   sendOtp,
-  userResetPassword
+  userResetPassword,
+  changePassword,
+  deleteOtp
 }

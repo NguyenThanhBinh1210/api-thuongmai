@@ -114,7 +114,6 @@ const deleteMany = async (req, res) => {
 const getAllProduct = async (req, res) => {
   try {
     let { page = 1, limit = 30, category, sort_by, order, rating_filter, name, price_max, price_min } = req.query
-
     page = Number(page)
     limit = Number(limit)
     const response = await ProductService.getAllProduct(

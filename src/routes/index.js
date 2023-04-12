@@ -5,6 +5,7 @@ const PurchaseRouter = require('./PurchaseRouter')
 const CommentRouter = require('./CommentRouter')
 const EvaluateRouter = require('./EvaluateRouter')
 const PaymentRouter = require('./PaymentRouter')
+const ChatBoxAIRouter = require('./ChatBoxAIRouter')
 
 const routes = (app) => {
   app.use('/api/user', UserRouter)
@@ -14,6 +15,7 @@ const routes = (app) => {
   app.use('/api/comment', CommentRouter)
   app.use('/api/evaluate', EvaluateRouter)
   app.use('/api/payment', PaymentRouter)
+  app.use('/api/chat', ChatBoxAIRouter)
 }
 
 module.exports = routes
