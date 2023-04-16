@@ -10,6 +10,7 @@ const PurchaseSchema = new mongoose.Schema(
     price_before_discount: { type: Number, default: 0 },
     isEvaluate: { type: Boolean, default: false },
     isPaid: { type: Boolean, default: false },
+    reasonCancel: { type: String },
     paymentMethods: { type: Number, default: PAYMENT_TYPE.OFFLINE },
     status: { type: Number, default: STATUS_PURCHASE.WAIT_FOR_CONFIRMATION }
   },

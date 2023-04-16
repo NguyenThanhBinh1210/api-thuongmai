@@ -1,5 +1,6 @@
 const { STATUS } = require('../constants/status')
 const Comment = require('../models/CommentModel')
+const User = require('../models/UserModel')
 
 const createComment = async (req, res) => {
   const { title, image, product_id } = req.body
@@ -15,6 +16,38 @@ const createComment = async (req, res) => {
     })
   }
   return res.status(STATUS.OK).json(response)
+}
+
+const replyComment = async (req, res) => {
+  const { comment_id, message, image } = req.body
+  const userId = req.params.id
+  const user = await User.findOne({ _id: userId })
+  const comment = await Comment.findOne({ _id: comment_id })
+  if (comment === null) {
+    return res.status(STATUS.BAD_REQUEST).json({ message: 'Không tìm thấy bình luận!' })
+  }
+  const reply = {
+    message: message,
+    user: {
+      _id: user._id,
+      name: user.name,
+      avatar: user.avatar
+    },
+    image: image
+  }
+  comment.replyComment.push(reply)
+  await comment.save()
+  return res.status(STATUS.OK).json({ message: 'Đã phản hồi bình luận!' })
+}
+const deleteReply = async (req, res) => {
+  const { id: comment_id, idReply: reply_id } = req.params
+  const comment = await Comment.findOne({ _id: comment_id })
+  if (comment === null) {
+    return res.status(STATUS.BAD_REQUEST).json({ message: 'Không tìm thấy bình luận!' })
+  }
+  comment.replyComment = comment.replyComment.filter((reply) => reply._id.toString() !== reply_id)
+  comment.save()
+  return res.status(STATUS.OK).json({ message: 'Đã xoá phản hồi bình luận!' })
 }
 
 const getCommentProduct = async (req, res) => {
@@ -102,5 +135,7 @@ module.exports = {
   createComment,
   getCommentProduct,
   updateComment,
-  deleteComment
+  deleteComment,
+  replyComment,
+  deleteReply
 }

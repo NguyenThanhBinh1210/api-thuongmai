@@ -3,7 +3,6 @@ const router = express.Router()
 const userController = require('../controllers/UserController')
 const { authMiddleWare, authUserMiddleWare } = require('../middleware/authMiddleware')
 const dotenv = require('dotenv')
-// const passport = require('passport')
 dotenv.config()
 
 router.post('/sign-up', userController.createUser)

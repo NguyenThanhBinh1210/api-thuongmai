@@ -1,13 +1,5 @@
 const momoPayment = (req) => {
   const orderInfo = req.body.id
-  // const item = req.body.data.map((item) => {
-  //   return {
-  //     name: item.product.name,
-  //     // imageUrl: 'https://th.bing.com/th/id/OIP.-461KrbL81XaWn3zoq2CIAHaJQ?pid=ImgDet&rs=1',
-  //     price: Math.ceil(item.price_before_discount / 1000) * 1000,
-  //     quantity: item.buy_count
-  //   }
-  // })
   const amount = req.body.price
   const accessKey = process.env.MOMO_KEY
   const secretKey = process.env.MOMO_SECRET

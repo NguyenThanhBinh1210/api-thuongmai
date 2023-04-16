@@ -3,6 +3,7 @@ const Purchase = require('../models/PurchaseModel')
 const { STATUS_PURCHASE } = require('../constants/purchase')
 const { PAYMENT_TYPE } = require('../constants/payment')
 const { sendMail } = require('../utils/mailer')
+const UserService = require('../services/UserService')
 
 const addToCart = async (req, res) => {
   const { product_id, buy_count } = req.body
@@ -63,7 +64,7 @@ const addToCart = async (req, res) => {
         buy_count: buy_count,
         price: product.price,
         discount: product.discount,
-        price_before_discount: product.price - (product.price * product.discount) / 100,
+        price_before_discount: product.price_after_discount,
         status: STATUS_PURCHASE.IN_CART
       }
       const addedPurchase = await new Purchase(purchase).save()
@@ -207,12 +208,12 @@ const updatePurchase = async (req, res) => {
   }
 }
 const buyProducts = async (req, res) => {
-  console.log(req.body)
   const purchases = []
   const userId = req.params.id
   const paymentMethodss = req.body.paymentMethods
   for (const item of req.body.body) {
     let product = await Product.findById(item.product_id).lean()
+    console.log(product)
     if (product) {
       if (item.buy_count > product.countInStock) {
         return res.status(404).json({ message: 'Số lượng mua vượt quá số lượng sản phẩm' })
@@ -265,7 +266,7 @@ const buyProducts = async (req, res) => {
             product: item.product_id,
             buy_count: item.buy_count,
             price: product.price,
-            price_before_discount: product.price_before_discount,
+            price_after_discount: product.price_after_discount,
             status: STATUS_PURCHASE.WAIT_FOR_CONFIRMATION,
             isPaid: paymentMethodss === 1 ? true : false
           }
@@ -293,9 +294,8 @@ const buyProducts = async (req, res) => {
   }
   return res.status(200).json(response)
 }
-
 const changeStatusPurchase = async (req, res) => {
-  const { product_id, purchase_id, status } = req.body
+  const { product_id, purchase_id, status, on_done } = req.body
   const purchaseInDb = await Purchase.findOne({
     purchase_id: purchase_id,
     product: {
@@ -312,11 +312,13 @@ const changeStatusPurchase = async (req, res) => {
       path: 'user'
     })
     .lean()
+
   if (purchaseInDb) {
     const updatedProduct = await Purchase.findByIdAndUpdate(
       purchase_id,
       {
-        status: status
+        status: status,
+        isPaid: on_done
       },
       { new: true }
     )
@@ -345,6 +347,45 @@ const changeStatusPurchase = async (req, res) => {
     return res.status(200).json(response)
   } else {
     return res.status(404).json({ message: 'Không tìm thấy đơn' })
+  }
+}
+const cancelBuyProduct = async (req, res) => {
+  const { reason, purchase_id } = req.body
+  if (!reason) {
+    return res.status(404).json({ message: 'Chưa chọn lý do!' })
+  }
+  const purchaseInDb = await Purchase.findOne({
+    _id: purchase_id
+  }).lean()
+
+  if (!purchaseInDb) {
+    return res.status(404).json({ message: 'Đơn hàng chưa được xác định!' })
+  }
+  if (purchaseInDb.status === 1) {
+    const updatedProduct = await Purchase.findByIdAndUpdate(
+      purchase_id,
+      {
+        status: 5,
+        reasonCancel: reason
+      },
+      { new: true }
+    )
+      .populate({
+        path: 'product',
+        populate: {
+          path: 'category'
+        }
+      })
+      .populate({
+        path: 'user'
+      })
+      .lean()
+    const response = {
+      data: updatedProduct
+    }
+    return res.status(200).json(response)
+  } else {
+    return res.status(404).json({ message: 'Đơn hàng đang gửi không thể hoàn tác.' })
   }
 }
 const deletePurchases = async (req, res) => {
@@ -380,6 +421,56 @@ const getAllPurchases = async (req, res) => {
   return res.status(200).json(response)
 }
 
+const getUserSupend = async (req, res) => {
+  let condition = {
+    status: {
+      $ne: STATUS_PURCHASE.IN_CART
+    }
+  }
+  let purchases = await Purchase.find(condition)
+    .populate({
+      path: 'user'
+    })
+    .sort({
+      createdAt: -1
+    })
+    .lean()
+
+  const data = purchases.map((item) => {
+    return {
+      name: item.user.name,
+      isPaid: item.isPaid,
+      price: item.price_before_discount,
+      buy_count: item.buy_count
+    }
+  })
+
+  const filteredArr = data.filter((item) => item.isPaid === true)
+
+  const reducedArr = filteredArr.reduce((acc, item) => {
+    if (!acc[item.name]) {
+      acc[item.name] = { name: item.name, price: item.price, buy_count: item.buy_count }
+    } else {
+      acc[item.name].price += item.price
+      acc[item.name].buy_count += item.buy_count
+    }
+    return acc
+  }, {})
+
+  const resultArr = Object.values(reducedArr)
+    .map((item) => {
+      return {
+        name: item.name,
+        price: item.price,
+        buy_count: item.buy_count
+      }
+    })
+    .sort(function (a, b) {
+      return b.price - a.price
+    })
+  res.status(200).json(resultArr)
+}
+
 module.exports = {
   addToCart,
   getPurchases,
@@ -388,5 +479,7 @@ module.exports = {
   changeStatusPurchase,
   deletePurchases,
   getAllPurchases,
-  getPurchasesPaymentOnline
+  getPurchasesPaymentOnline,
+  cancelBuyProduct,
+  getUserSupend
 }
