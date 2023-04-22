@@ -1,14 +1,14 @@
 const Product = require('../models/ProductModel')
 const { SORT_BY, ORDER } = require('../constants/product')
 
-const createProduct = (newProduct) => {
+const createProduct = (newProduct, images) => {
   return new Promise(async (resolve, reject) => {
-    const { name, image, selled, rating, countInStock, price, description, discount, category } = newProduct
+    const { name, selled, rating, countInStock, price, description, discount, category } = newProduct
     const price_after_discount = Math.ceil((price - (price * discount) / 100) / 1000) * 1000
     try {
       const product = {
         name,
-        image,
+        image: images,
         selled,
         rating,
         countInStock,
@@ -32,7 +32,7 @@ const createProduct = (newProduct) => {
   })
 }
 
-const updateProduct = (id, data) => {
+const updateProduct = (id, data, images) => {
   return new Promise(async (resolve, reject) => {
     try {
       const checkProduct = await Product.findOne({
@@ -46,7 +46,13 @@ const updateProduct = (id, data) => {
       }
       const price_after_discount =
         Math.ceil((checkProduct.price - (checkProduct.price * checkProduct.discount) / 100) / 1000) * 1000
-      const newData = { ...data, price_after_discount: price_after_discount }
+      let newData
+      if (!data.image) {
+        newData = { ...data, price_after_discount: price_after_discount, image: images }
+      } else {
+        newData = { ...data, price_after_discount: price_after_discount, image: data.image }
+      }
+
       const updatedProduct = await Product.findByIdAndUpdate(id, newData, { new: true })
       resolve({
         status: 'OK',

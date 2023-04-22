@@ -1,6 +1,7 @@
 const { STATUS } = require('../constants/status')
 const { slugVietnamese } = require('../utils/utils')
 const Product = require('../models/ProductModel')
+const ChatBoxAI = require('../models/ChatBoxAIModel')
 
 const question = async (req, res) => {
   const question = slugVietnamese(req.body.question)
@@ -54,6 +55,26 @@ const question = async (req, res) => {
   return res.status(STATUS.OK).json(response)
 }
 
+const createResult = async (req, res) => {
+  const { question, result } = req.body
+  const checkResult = await ChatBoxAI.findOne({ result: result })
+  if (checkResult !== null) {
+    return res.status(400).json({ message: 'Đã có mẫu câu trả lời này rồi!' })
+  }
+  const resultChat = await new ChatBoxAI({ result, includes: question }).save()
+  const response = {
+    message: 'Tạo mẫu câu trả lời thành công!',
+    data: resultChat.toObject({
+      transform: (doc, ret, option) => {
+        delete ret.__v
+        return ret
+      }
+    })
+  }
+  return res.status(400).json(response)
+}
+
 module.exports = {
-  question
+  question,
+  createResult
 }

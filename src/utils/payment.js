@@ -9,7 +9,6 @@ const momoPayment = (req) => {
   const requestType = 'payWithMethod'
   const orderId = partnerCode + new Date().getTime()
   const requestId = orderId
-  // const item1 = item
   const extraData = ''
   const orderGroupId = ''
   const autoCapture = true
@@ -49,7 +48,6 @@ const momoPayment = (req) => {
     orderId: orderId,
     orderInfo: orderInfo,
     redirectUrl: redirectUrl,
-    // items: item1,
     ipnUrl: ipnUrl,
     lang: lang,
     requestType: requestType,

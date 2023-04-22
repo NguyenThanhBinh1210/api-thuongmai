@@ -83,7 +83,6 @@ const addToCart = async (req, res) => {
       message: 'Thêm sản phẩm vào giỏ hàng thành công',
       data
     }
-    // console.log(response)
     return res.status(200).json(response)
   } else {
     return res.status(400).json({ message: 'Không tìm thấy sản phẩm' })
@@ -208,17 +207,17 @@ const updatePurchase = async (req, res) => {
   }
 }
 const buyProducts = async (req, res) => {
+  const { shippingAddress } = req.body
   const purchases = []
   const userId = req.params.id
   const paymentMethodss = req.body.paymentMethods
   for (const item of req.body.body) {
     let product = await Product.findById(item.product_id).lean()
-    console.log(product)
     if (product) {
       if (item.buy_count > product.countInStock) {
         return res.status(404).json({ message: 'Số lượng mua vượt quá số lượng sản phẩm' })
       } else {
-        let dataProduct = await Product.findByIdAndUpdate(
+        await Product.findByIdAndUpdate(
           product._id,
           {
             countInStock: Number(product.countInStock) - Number(item.buy_count),
@@ -228,11 +227,7 @@ const buyProducts = async (req, res) => {
             new: true
           }
         )
-          .populate({
-            path: 'category'
-          })
 
-          .lean()
         let data = await Purchase.findOneAndUpdate(
           {
             user: userId,
@@ -244,7 +239,13 @@ const buyProducts = async (req, res) => {
           {
             buy_count: item.buy_count,
             status: STATUS_PURCHASE.WAIT_FOR_CONFIRMATION,
-            isPaid: paymentMethodss === 1 ? true : false
+            isPaid: paymentMethodss === 1 ? true : false,
+            shippingAddress: {
+              fullName: shippingAddress.fullName,
+              address: shippingAddress.address,
+              city: shippingAddress.city,
+              phone: shippingAddress.phone
+            }
           },
           {
             new: true
@@ -266,7 +267,13 @@ const buyProducts = async (req, res) => {
             product: item.product_id,
             buy_count: item.buy_count,
             price: product.price,
-            price_after_discount: product.price_after_discount,
+            price_before_discount: product.price_after_discount,
+            shippingAddress: {
+              fullName: shippingAddress.fullName,
+              address: shippingAddress.address,
+              city: shippingAddress.city,
+              phone: Number(shippingAddress.phone)
+            },
             status: STATUS_PURCHASE.WAIT_FOR_CONFIRMATION,
             isPaid: paymentMethodss === 1 ? true : false
           }
@@ -333,12 +340,16 @@ const changeStatusPurchase = async (req, res) => {
       })
       .lean()
     if (status === STATUS_PURCHASE.WAIT_FOR_GETTING) {
-      const description = `${purchaseInDb.buy_count} chiếc ${purchaseInDb.product.name}, tổng số tiền là ${
+      const FormatNumber = (number) => {
+        const newNumber = new Intl.NumberFormat('de-DE').format(number)
+        return newNumber
+      }
+      const description = `${purchaseInDb.buy_count} chiếc ${purchaseInDb.product.name}, tổng số tiền là ${FormatNumber(
         purchaseInDb.product.price_after_discount * purchaseInDb.buy_count
-      }đ.`
+      )}đ.`
       const text = 'Đã gửi đơn hàng:'
       const subject = 'Thông báo gửi hàng'
-      const email = purchaseInDb.user.email
+      const email = purchaseInDb.user.email.replace('google', '')
       sendMail(description, email, subject, text)
     }
     const response = {

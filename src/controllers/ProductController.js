@@ -5,14 +5,15 @@ const ProductService = require('../services/ProductService')
 const createProduct = async (req, res) => {
   try {
     const { name, countInStock, price } = req.body
-
+    const images = req.files.map((file) => file.path)
+    console.log(images)
     if (!name || !countInStock || !price) {
       return res.status(200).json({
         status: 'ERR',
         message: 'The input is required'
       })
     }
-    const response = await ProductService.createProduct(req.body)
+    const response = await ProductService.createProduct(req.body, images)
     return res.status(200).json(response)
   } catch (e) {
     return res.status(404).json({
@@ -24,14 +25,16 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const productId = req.params.id
+    const images = req.files.map((file) => file.path)
     const data = req.body
+    console.log(data.image)
     if (!productId) {
       return res.status(200).json({
         status: 'ERR',
         message: 'Không tìm thấy sản phẩm!'
       })
     }
-    const response = await ProductService.updateProduct(productId, data)
+    const response = await ProductService.updateProduct(productId, data, images)
     return res.status(200).json(response)
   } catch (e) {
     return res.status(404).json({

@@ -1,5 +1,6 @@
 const { STATUS } = require('../constants/status')
 const Category = require('../models/CategoryModel')
+const { createCategories } = require('../services/CategoryService')
 
 const addCategory = async (req, res) => {
   const { name, parent_category_id } = req.body
@@ -39,7 +40,7 @@ const getCategories = async (req, res) => {
   let condition = exclude ? { _id: { $ne: exclude } } : {}
   const categories = await Category.find(condition)
     .populate({
-      path: 'parentCategory'
+      path: 'parentId'
     })
     .select({ __v: 0 })
     .lean()
@@ -51,7 +52,12 @@ const getCategories = async (req, res) => {
 }
 
 const getCategory = async (req, res) => {
-  const categoryDB = await Category.findById(req.params.id).select({ __v: 0 }).lean()
+  const categoryDB = await Category.findById(req.params.id)
+    .populate({
+      path: 'parentId'
+    })
+    .select({ __v: 0 })
+    .lean()
   if (categoryDB) {
     const response = {
       message: 'Lấy category thành công',
@@ -64,8 +70,11 @@ const getCategory = async (req, res) => {
 }
 
 const updateCategory = async (req, res) => {
-  const { name } = req.body
-  const categoryDB = await Category.findByIdAndUpdate(req.params.id, { name }, { new: true }).select({ __v: 0 }).lean()
+  const { name, parent_id } = req.body
+
+  const categoryDB = await Category.findByIdAndUpdate(req.params.id, { name, parentId: parent_id }, { new: true })
+    .select({ __v: 0 })
+    .lean()
   if (categoryDB) {
     const response = {
       message: 'Cập nhật category thành công',
@@ -86,10 +95,49 @@ const deleteCategory = async (req, res) => {
   }
 }
 
+const createCategory = async (req, res) => {
+  const checkCategory = await Category.findOne({ name: req.body.name })
+  if (checkCategory) {
+    return res.status(STATUS.BAD_REQUEST).json({ message: 'Tên này trùng rồi' })
+  }
+  const categoryObj = {
+    name: req.body.name
+  }
+  if (req.body.parent_id) {
+    categoryObj.parentId = req.body.parent_id
+  }
+
+  const cat = await new Category(categoryObj).save()
+  const response = {
+    message: 'Tạo danh mục thành công!',
+    data: cat.toObject({
+      transform: (doc, ret, option) => {
+        delete ret.__v
+        return ret
+      }
+    })
+  }
+  return res.status(STATUS.OK).json(response)
+}
+
+const getCategoriesAll = async (req, res) => {
+  const { parent_id } = req.body
+  const categories = await Category.find({})
+  if (categories) {
+    const categoryList = createCategories(categories, parent_id)
+    res.status(200).json({
+      message: 'Lấy danh mục thành công',
+      data: categoryList
+    })
+  }
+}
+
 module.exports = {
   addCategory,
   getCategory,
   getCategories,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  createCategory,
+  getCategoriesAll
 }

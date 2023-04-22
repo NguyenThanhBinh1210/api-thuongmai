@@ -5,6 +5,9 @@ const User = require('../models/UserModel')
 const { sendMail } = require('../utils/mailer')
 const bcrypt = require('bcrypt')
 const { STATUS } = require('../constants/status')
+const { google } = require('googleapis')
+const { OAuth2 } = google.auth
+const client = new OAuth2(process.env.CLIENT_ID)
 
 const sendOtp = async (req, res) => {
   try {
@@ -49,9 +52,26 @@ const sendOtp = async (req, res) => {
   }
 }
 
+const getUserOtpTimer = async (req, res) => {
+  const { user_email } = req.body
+  const otpData = await Otp.findOne({ email: user_email })
+  let priviceTime = 61
+  if (otpData !== null) {
+    const tempTime = (new Date() - otpData.expiresAt) / 1000
+    const elseTime = priviceTime - tempTime
+
+    priviceTime = elseTime
+    if (elseTime <= 0) {
+      return res.status(400).json({ timer: 0 })
+    }
+    return res.status(200).json({ timer: priviceTime })
+  }
+  return res.status(200).json({ timer: 0 })
+}
+
 const deleteOtp = async (req, res) => {
-  Otp.deleteMany({ email: req.params.id })
-  return res.status(200).json({ message: 'Đã xoá OTP' })
+  const otp = await Otp.findOneAndDelete({ email: req.params.id })
+  return res.status(400).json({ message: 'Đã xoá!' })
 }
 
 const userResetPassword = async (req, res) => {
@@ -173,6 +193,74 @@ const loginUser = async (req, res) => {
     })
   }
 }
+const googleLogin = async (req, res) => {
+  const { tokenId } = req.body
+
+  const verify = await client.verifyIdToken({
+    idToken: tokenId,
+    audience: process.env.CLIENT_ID
+  })
+  const { family_name, given_name, email, picture } = verify.payload
+
+  const password = email + process.env.CLIENT_ID
+  const passwordHash = bcrypt.hashSync(password, 10)
+
+  const user = await User.findOne({
+    email: email + 'google',
+    type: 'google'
+  })
+  if (user === null) {
+    const createdUser = await User.create({
+      name: family_name + ' ' + given_name,
+      email: email + 'google',
+      type: 'google',
+      avatar: picture,
+      password: passwordHash
+    })
+    const access_token = await JwtService.genneralAccessToken({
+      id: createdUser._id,
+      role: createdUser.role
+    })
+    const newUser = {
+      _id: createdUser._id,
+      name: createdUser.name,
+      email: createdUser.email.replace('google', ''),
+      avatar: createdUser.avatar,
+      role: createdUser.role,
+      type: createdUser.type
+    }
+    return res.status(200).json({
+      message: 'Đăng nhập thành công!',
+      access_token,
+      status: 'OK',
+      data: newUser
+    })
+  } else {
+    const isMatch = bcrypt.compareSync(password, user.password)
+    if (!isMatch) {
+      return res.status(400).json({ msg: 'Mật khẩu chưa đúng' })
+    }
+    const access_token = await JwtService.genneralAccessToken({
+      id: user._id,
+      role: user.role
+    })
+    const newUser = {
+      _id: user._id,
+      name: user.name,
+      email: user.email.replace('google', ''),
+      avatar: user.avatar,
+      role: user.role,
+      type: user.type
+    }
+
+    return res.status(200).json({
+      message: 'Đăng nhập thành công!',
+      access_token,
+      status: 'OK',
+      data: newUser
+    })
+  }
+}
 
 const updateUser = async (req, res) => {
   try {
@@ -284,5 +372,7 @@ module.exports = {
   sendOtp,
   userResetPassword,
   changePassword,
-  deleteOtp
+  deleteOtp,
+  getUserOtpTimer,
+  googleLogin
 }
