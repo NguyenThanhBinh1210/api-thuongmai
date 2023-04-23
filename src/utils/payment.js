@@ -4,7 +4,7 @@ const momoPayment = (req) => {
   const accessKey = process.env.MOMO_KEY
   const secretKey = process.env.MOMO_SECRET
   const partnerCode = 'MOMO'
-  const redirectUrl = `http://localhost:3000/payment-success`
+  const redirectUrl = `https://virtue-shop.vercel.app/payment-success`
   const ipnUrl = 'https://momo.vn'
   const requestType = 'payWithMethod'
   const orderId = partnerCode + new Date().getTime()
