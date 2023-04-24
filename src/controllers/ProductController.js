@@ -6,7 +6,6 @@ const createProduct = async (req, res) => {
   try {
     const { name, countInStock, price } = req.body
     const images = req.files.map((file) => file.path)
-    console.log(images)
     if (!name || !countInStock || !price) {
       return res.status(200).json({
         status: 'ERR',
@@ -27,7 +26,6 @@ const updateProduct = async (req, res) => {
     const productId = req.params.id
     const images = req.files.map((file) => file.path)
     const data = req.body
-    console.log(data.image)
     if (!productId) {
       return res.status(200).json({
         status: 'ERR',
@@ -191,7 +189,6 @@ const getProducts = async (req, res) => {
 
 const evaluateProduct = async (req, res) => {
   const { product_id, rating } = req.body
-  // console.log(product_id, rating)
   const productDb = await Product.findOne({
     _id: product_id
   }).lean()

@@ -9,7 +9,7 @@ const genneralAccessToken = async (payload) => {
       ...payload
     },
     process.env.ACCESS_TOKEN,
-    { expiresIn: '7d' }
+    { expiresIn: '300s' }
   )
 
   return access_token
@@ -21,7 +21,7 @@ const genneralRefreshToken = async (payload) => {
       ...payload
     },
     process.env.REFRESH_TOKEN,
-    { expiresIn: '365d' }
+    { expiresIn: '90d' }
   )
 
   return refresh_token
@@ -34,7 +34,7 @@ const refreshTokenJwtService = (token) => {
         if (err) {
           resolve({
             status: 'ERR',
-            message: 'The authemtication'
+            message: 'The authentication'
           })
         }
         const access_token = await genneralAccessToken({

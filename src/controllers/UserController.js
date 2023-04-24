@@ -221,6 +221,10 @@ const googleLogin = async (req, res) => {
       id: createdUser._id,
       role: createdUser.role
     })
+    const refresh_token = await JwtService.genneralRefreshToken({
+      id: createdUser._id,
+      role: createdUser.role
+    })
     const newUser = {
       _id: createdUser._id,
       name: createdUser.name,
@@ -232,6 +236,7 @@ const googleLogin = async (req, res) => {
     return res.status(200).json({
       message: 'Đăng nhập thành công!',
       access_token,
+      refresh_token,
       status: 'OK',
       data: newUser
     })
@@ -241,6 +246,10 @@ const googleLogin = async (req, res) => {
       return res.status(400).json({ msg: 'Mật khẩu chưa đúng' })
     }
     const access_token = await JwtService.genneralAccessToken({
+      id: user._id,
+      role: user.role
+    })
+    const refresh_token = await JwtService.genneralRefreshToken({
       id: user._id,
       role: user.role
     })
@@ -256,6 +265,7 @@ const googleLogin = async (req, res) => {
     return res.status(200).json({
       message: 'Đăng nhập thành công!',
       access_token,
+      refresh_token,
       status: 'OK',
       data: newUser
     })
@@ -330,8 +340,7 @@ const getDetailsUser = async (req, res) => {
 
 const refreshToken = async (req, res) => {
   try {
-    // const token = req.body.refresh_token
-    const token = req.cookies.refresh_token
+    const token = req.body.refresh_token
     if (!token) {
       return res.status(200).json({
         status: 'ERR',
