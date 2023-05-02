@@ -56,6 +56,11 @@ const MomoControllerPayment = async (req, res) => {
   }
 }
 
+const PaypalController = async (req, res) => {
+  return
+}
+
 module.exports = {
-  MomoControllerPayment
+  MomoControllerPayment,
+  PaypalController
 }

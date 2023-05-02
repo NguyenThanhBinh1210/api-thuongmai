@@ -57,10 +57,14 @@ const question = async (req, res) => {
 
 const createResult = async (req, res) => {
   const { question, result } = req.body
+  // console.log(question, result)
   const checkResult = await ChatBoxAI.findOne({ result: result })
-  if (checkResult !== null) {
-    return res.status(400).json({ message: 'Đã có mẫu câu trả lời này rồi!' })
+  if ((question.length === 0, result === '')) {
+    return res.status(400).json({ message: 'Chưa điền đủ thông tin!' })
   }
+  // if (checkResult !== null && result !== '') {
+  //   return res.status(400).json({ message: 'Đã có mẫu câu trả lời này rồi!' })
+  // }
   const resultChat = await new ChatBoxAI({ result, includes: question }).save()
   const response = {
     message: 'Tạo mẫu câu trả lời thành công!',
@@ -71,10 +75,104 @@ const createResult = async (req, res) => {
       }
     })
   }
-  return res.status(400).json(response)
+  return res.status(200).json(response)
+}
+
+const getResults = async (req, res) => {
+  try {
+    const results = await ChatBoxAI.find({})
+      .select({ __v: 0 })
+      .sort({
+        createdAt: -1
+      })
+      .lean()
+    const response = {
+      message: 'Lấy danh sách mẫu câu thành công!',
+      data: results
+    }
+    return res.status(STATUS.OK).json(response)
+  } catch (e) {
+    return res.status(404).json({
+      message: e
+    })
+  }
+}
+
+const getResult = async (req, res) => {
+  const question = slugVietnamese(req.body.question)
+  if (question.includes('dang hot') || question.includes('hot nhat')) {
+    const limit = 3
+    const sort_by = 'selled'
+    const order = 'desc'
+    let [products] = await Promise.all([
+      Product.find({})
+        .populate({ path: 'category' })
+        .limit(limit)
+        .sort({ [sort_by]: order === 'desc' ? -1 : 1 })
+        .select({ __v: 0, description: 0 })
+        .lean(),
+      Product.find({}).countDocuments().lean()
+    ])
+    const response = {
+      message: 'Hiện tại đây là 3 sản phẩm bán chạy nhất trong shop:',
+      dataProduct: products
+    }
+    return res.status(STATUS.OK).json(response)
+  }
+  const result = await ChatBoxAI.findOne({ includes: question })
+  if (result === null) {
+    await new ChatBoxAI({ includes: [question] }).save()
+    return res.status(STATUS.OK).json({
+      message: 'Xin lỗi tôi chưa được lập trình để trả lời câu hỏi này!'
+    })
+  } else {
+    const response = {
+      result: result.result
+    }
+    return res.status(STATUS.OK).json(response)
+  }
+}
+
+const updateResult = async (req, res) => {
+  const id = req.params.id
+  const data = req.body
+  const checked = await ChatBoxAI.findOne({ _id: id })
+  if (checked === null) {
+    return res.status(404).json({
+      message: 'Không tìm thấy kết quả!'
+    })
+  }
+  const updatedResult = await ChatBoxAI.findByIdAndUpdate(id, data, { new: true })
+  return res.status(200).json({
+    message: 'Cập nhật thành công!',
+    data: updatedResult
+  })
+}
+
+const deleteResult = async (req, res) => {
+  try {
+    const id = req.params.id
+    if (!id) {
+      return res.status(404).json({
+        message: 'Không tìm thấy kết quả!'
+      })
+    }
+    await ChatBoxAI.findByIdAndDelete(id)
+    return res.status(200).json({
+      message: 'Đã xoá thành công!'
+    })
+  } catch (e) {
+    return res.status(404).json({
+      message: e
+    })
+  }
 }
 
 module.exports = {
   question,
-  createResult
+  createResult,
+  getResults,
+  getResult,
+  updateResult,
+  deleteResult
 }

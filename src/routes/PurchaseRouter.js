@@ -12,6 +12,7 @@ router.put('/cancel-buy/:id', authUserMiddleWare, PurchaseController.cancelBuyPr
 router.delete('/delete-purchase/:id', authUserMiddleWare, PurchaseController.deletePurchases)
 router.get('/get-all', authMiddleWare, PurchaseController.getAllPurchases)
 router.get('/get-purchase-online/:id', PurchaseController.getPurchasesPaymentOnline)
-router.get('/get-user-supend', PurchaseController.getUserSupend)
+router.get('/get-user-supend', authMiddleWare, PurchaseController.getUserSupend)
+router.get('/get-money', authMiddleWare, PurchaseController.getMoneyWeek)
 
 module.exports = router

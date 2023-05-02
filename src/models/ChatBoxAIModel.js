@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const chatboxAISchema = new mongoose.Schema(
   {
-    result: { type: String },
+    result: { type: String, default: '' },
     includes: { type: [String], require: true }
   },
   {

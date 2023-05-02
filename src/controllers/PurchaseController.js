@@ -3,6 +3,7 @@ const Purchase = require('../models/PurchaseModel')
 const { STATUS_PURCHASE } = require('../constants/purchase')
 const { PAYMENT_TYPE } = require('../constants/payment')
 const { sendMail } = require('../utils/mailer')
+const moment = require('moment')
 const UserService = require('../services/UserService')
 
 const addToCart = async (req, res) => {
@@ -482,6 +483,48 @@ const getUserSupend = async (req, res) => {
   res.status(200).json(resultArr)
 }
 
+const getMoneyWeek = async (req, res) => {
+  const today = new Date()
+  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  const weekDays = []
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(lastWeek.getTime() + i * 24 * 60 * 60 * 1000)
+    const dateString = date.toISOString().slice(0, 10)
+    weekDays.push(dateString)
+  }
+
+  const sales = await Purchase.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: lastWeek, $lte: today },
+        isPaid: true
+      }
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+        price: {
+          $sum: {
+            $multiply: ['$price_before_discount', '$buy_count']
+          }
+        }
+      }
+    }
+  ])
+
+  const salesByDay = {}
+  sales.forEach((sale) => {
+    salesByDay[sale._id] = sale.price
+  })
+
+  const result = weekDays.map((day) => ({
+    _id: day,
+    price: salesByDay[day] || 0
+  }))
+  return res.status(200).json({ message: 'Thành công!', data: result })
+}
+
 module.exports = {
   addToCart,
   getPurchases,
@@ -492,5 +535,6 @@ module.exports = {
   getAllPurchases,
   getPurchasesPaymentOnline,
   cancelBuyProduct,
-  getUserSupend
+  getUserSupend,
+  getMoneyWeek
 }
