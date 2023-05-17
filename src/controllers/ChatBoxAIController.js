@@ -57,14 +57,11 @@ const question = async (req, res) => {
 
 const createResult = async (req, res) => {
   const { question, result } = req.body
-  // console.log(question, result)
-  const checkResult = await ChatBoxAI.findOne({ result: result })
+
   if ((question.length === 0, result === '')) {
     return res.status(400).json({ message: 'Chưa điền đủ thông tin!' })
   }
-  // if (checkResult !== null && result !== '') {
-  //   return res.status(400).json({ message: 'Đã có mẫu câu trả lời này rồi!' })
-  // }
+
   const resultChat = await new ChatBoxAI({ result, includes: question }).save()
   const response = {
     message: 'Tạo mẫu câu trả lời thành công!',
@@ -114,7 +111,7 @@ const getResult = async (req, res) => {
       Product.find({}).countDocuments().lean()
     ])
     const response = {
-      message: 'Hiện tại đây là 3 sản phẩm bán chạy nhất trong shop:',
+      result: 'Hiện tại đây là 3 sản phẩm bán chạy nhất trong shop:',
       dataProduct: products
     }
     return res.status(STATUS.OK).json(response)
@@ -123,7 +120,7 @@ const getResult = async (req, res) => {
   if (result === null) {
     await new ChatBoxAI({ includes: [question] }).save()
     return res.status(STATUS.OK).json({
-      message: 'Xin lỗi tôi chưa được lập trình để trả lời câu hỏi này!'
+      result: 'Xin lỗi tôi chưa được lập trình để trả lời câu hỏi này!'
     })
   } else {
     const response = {

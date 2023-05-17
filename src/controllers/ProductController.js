@@ -26,6 +26,7 @@ const updateProduct = async (req, res) => {
     const productId = req.params.id
     const images = req.files.map((file) => file.path)
     const data = req.body
+    // console.log(req.body.image)
     if (!productId) {
       return res.status(200).json({
         status: 'ERR',

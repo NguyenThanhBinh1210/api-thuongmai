@@ -50,9 +50,9 @@ const updateProduct = (id, data, images) => {
       if (!data.image) {
         newData = { ...data, price_after_discount: price_after_discount, image: images }
       } else {
-        newData = { ...data, price_after_discount: price_after_discount, image: data.image }
+        const newImage = data.image.split(',')
+        newData = { ...data, price_after_discount: price_after_discount, image: newImage }
       }
-
       const updatedProduct = await Product.findByIdAndUpdate(id, newData, { new: true })
       resolve({
         status: 'OK',
